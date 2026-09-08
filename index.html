@@ -1,0 +1,1276 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Create A Dino 3</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Roboto:wght@400;700&display=swap');
+
+        :root {
+            --bg-color: #050505;
+            --theme-color: #00ff00;
+            --panel-bg: rgba(10, 10, 10, 0.95);
+            --danger: #ffaa00;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; }
+        body { background-color: var(--bg-color); color: white; font-family: 'Roboto', sans-serif; overflow: hidden; width: 100vw; height: 100vh; transition: background 0.5s; }
+        h1, h2, h3, .pixel-font { font-family: 'Press Start 2P', cursive; }
+
+        ::-webkit-scrollbar { width: 4px; }
+        ::-webkit-scrollbar-track { background: #111; }
+        ::-webkit-scrollbar-thumb { background: var(--theme-color); border-radius: 4px; }
+
+        .screen { position: absolute; top: 0; left: 0; width: 100vw; height: 100vh; display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 10; background: var(--bg-color); transition: opacity 0.5s; padding: 20px; }
+        .hidden { opacity: 0; pointer-events: none; visibility: hidden; }
+
+        .login-box { border: 2px solid var(--theme-color); padding: 20px; background: #111; box-shadow: 0 0 15px var(--theme-color); text-align: center; border-radius: 8px; width: 100%; max-width: 400px; }
+        .login-box h1 { font-size: 18px; margin-bottom: 20px; color: var(--theme-color); text-shadow: 0 0 5px var(--theme-color); }
+        .login-box input { display: block; width: 100%; margin: 10px 0; padding: 12px; background: #222; border: 1px solid var(--theme-color); color: white; outline: none; font-family: 'Roboto'; border-radius: 4px; font-size: 14px; }
+        .btn { background: var(--theme-color); color: black; padding: 12px 20px; border: none; cursor: pointer; font-family: 'Press Start 2P'; font-size: 10px; margin-top: 10px; transition: 0.2s; border-radius: 4px; font-weight: bold; width: 100%; text-align: center; }
+        .btn:hover { background: white; box-shadow: 0 0 10px var(--theme-color); }
+
+        .loading-bar-container { width: 100%; max-width: 300px; height: 20px; border: 2px solid var(--theme-color); margin-top: 20px; padding: 2px; border-radius: 4px; }
+        .loading-bar { height: 100%; background: var(--theme-color); width: 0%; transition: width 0.3s; }
+        #loading-text { margin-top: 10px; font-family: 'Press Start 2P'; font-size: 10px; }
+
+        #game-ui { position: absolute; top: 0; left: 0; width: 100vw; height: 100vh; display: flex; flex-direction: column; z-index: 5; }
+        
+        .top-bar { display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; background: rgba(0,0,0,0.95); border-bottom: 1px solid var(--theme-color); height: 60px; gap: 4px; flex-wrap: wrap; }
+        .top-btn { background: none; border: 1px solid var(--theme-color); color: var(--theme-color); padding: 5px 8px; cursor: pointer; font-family: 'Press Start 2P'; font-size: 7px; border-radius: 4px; width: auto; margin: 0; }
+        .top-btn:hover { background: var(--theme-color); color: black; }
+        .money-display { font-family: 'Press Start 2P'; color: #0f0; font-size: 9px; text-shadow: 0 0 5px #0f0; text-align: center; flex-grow: 1; }
+
+        #pause-banner { position: absolute; top: 60px; left: 0; width: 100%; background: rgba(255, 0, 0, 0.85); color: white; font-family: 'Press Start 2P'; font-size: 10px; text-align: center; padding: 4px; z-index: 45; display: none; box-shadow: 0 0 10px red; }
+        #pause-banner.active { display: block; }
+
+        .center-area { flex-grow: 1; display: flex; justify-content: center; align-items: center; padding: 10px; overflow-y: auto; flex-direction: column; }
+        .slots-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; width: 100%; max-width: 380px; justify-items: center; padding-bottom: 70px; }
+        
+        @media (min-width: 600px) {
+            .slots-grid { grid-template-columns: repeat(4, 1fr); max-width: 650px; padding-bottom: 0; }
+        }
+
+        .slot { width: 140px; height: 140px; border: 2px dashed var(--theme-color); border-radius: 10px; display: flex; flex-direction: column; justify-content: center; align-items: center; cursor: pointer; background: rgba(0,0,0,0.7); transition: 0.3s; position: relative; text-align: center; padding: 6px; }
+        .slot:hover { background: rgba(0, 255, 0, 0.1); border-style: solid; box-shadow: 0 0 10px var(--theme-color); }
+        .slot.locked { border-color: #555; }
+        .slot.sick { border-color: #ffaa00; background: rgba(255, 170, 0, 0.15); animation: pulseSick 1s infinite alternate; }
+        .slot.dead { border-color: #ff0000; background: rgba(255, 0, 0, 0.2); }
+        @keyframes pulseSick { from { box-shadow: 0 0 5px #ffaa00; } to { box-shadow: 0 0 15px #ffaa00; } }
+
+        .slot .emoji { font-size: 28px; }
+        .slot .info { font-size: 8px; margin-top: 3px; color: #ddd; word-wrap: break-word; width: 100%; }
+        .slot .timer { color: var(--theme-color); font-weight: bold; font-size: 9px; margin-top: 2px; }
+        .slot .hp-bar-container { width: 100%; height: 6px; background: #222; border: 1px solid #444; border-radius: 3px; margin-top: 4px; overflow: hidden; }
+        .slot .hp-bar { height: 100%; background: #0f0; width: 100%; transition: width 0.3s, background 0.3s; }
+
+        .sidebar { position: fixed; bottom: 0; left: 0; width: 100%; display: flex; background: rgba(0,0,0,0.95); border-top: 1px solid var(--theme-color); padding: 8px; justify-content: space-around; z-index: 40; gap: 4px; }
+        .sidebar .btn { margin: 0; font-size: 7px; padding: 8px 4px; flex: 1; }
+
+        @media (min-width: 768px) {
+            .sidebar { position: absolute; right: 20px; top: 50%; transform: translateY(-50%); width: 130px; flex-direction: column; background: transparent; border: none; padding: 0; gap: 8px; }
+            .sidebar .btn { width: 100%; font-size: 8px; padding: 10px 8px; }
+        }
+
+        .bottom-left { position: absolute; bottom: 65px; left: 15px; z-index: 40; }
+        @media (min-width: 768px) {
+            .bottom-left { bottom: 20px; left: 20px; }
+        }
+        .bottom-left .btn { width: auto; font-size: 8px; padding: 10px 12px; }
+
+        .panel { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 92%; max-width: 500px; max-height: 85vh; background: var(--panel-bg); border: 2px solid var(--theme-color); border-radius: 10px; padding: 15px; overflow-y: auto; z-index: 50; box-shadow: 0 0 30px #000; display: none; }
+        .panel.active { display: block; animation: popIn 0.2s ease; }
+        @keyframes popIn { from { transform: translate(-50%, -45%); opacity: 0; } to { transform: translate(-50%, -50%); opacity: 1; } }
+        
+        .panel-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--theme-color); padding-bottom: 10px; margin-bottom: 15px; }
+        .panel-title { font-family: 'Press Start 2P'; font-size: 10px; color: var(--theme-color); text-transform: uppercase; }
+        .close-btn { background: red; color: white; border: none; padding: 6px 10px; cursor: pointer; font-family: 'Press Start 2P'; font-size: 8px; border-radius: 4px; width: auto; margin: 0; }
+
+        .item-list { display: flex; flex-direction: column; gap: 10px; }
+        .list-item { background: #1a1a1a; border: 1px solid #333; padding: 12px; border-radius: 5px; display: flex; flex-direction: column; gap: 8px; }
+        .list-item-row { display: flex; justify-content: space-between; align-items: center; gap: 10px; width: 100%; }
+        .dino-info h4 { color: var(--theme-color); margin-bottom: 4px; font-size: 11px; }
+        .dino-info p { font-size: 9px; color: #aaa; line-height: 1.3; }
+        .list-item .btn { width: auto; padding: 8px 12px; font-size: 7px; margin: 0; }
+        
+        .comment-box { background: #111; border-left: 2px solid #00ffff; padding: 6px 8px; font-size: 8px; margin-top: 4px; border-radius: 3px; color: #ddd; }
+        .comment-author { color: #00ffff; font-weight: bold; margin-bottom: 2px; }
+
+        .rarity-Comum { color: #aaaaaa; }
+        .rarity-Incomum { color: #00ff00; }
+        .rarity-Raro { color: #0088ff; }
+        .rarity-Épico { color: #aa00ff; }
+        .rarity-Lendário { color: #ffaa00; text-shadow: 0 0 3px #ffaa00; }
+        .rarity-Mítico { color: #ff0055; text-shadow: 0 0 5px #ff0055; font-weight: bold; }
+
+        .chat-box { height: 200px; background: #111; border: 1px solid #333; overflow-y: auto; padding: 10px; margin-bottom: 10px; display: flex; flex-direction: column; gap: 8px; border-radius: 4px; }
+        .msg { padding: 8px; border-radius: 5px; max-width: 85%; font-size: 10px; line-height: 1.3; word-break: break-word; }
+        .msg.ia { background: rgba(0, 255, 0, 0.1); border-left: 3px solid var(--theme-color); align-self: flex-start; }
+        .msg.user { background: rgba(255, 255, 255, 0.1); border-right: 3px solid white; align-self: flex-end; text-align: right; }
+        .chat-input-area { display: flex; gap: 5px; }
+        .chat-input-area input { flex-grow: 1; padding: 10px; background: #222; border: 1px solid #444; color: white; outline: none; border-radius: 4px; font-size: 11px; }
+        .chat-input-area .btn { width: auto; margin: 0; padding: 10px 12px; font-size: 7px; }
+        
+        #toast-container { position: fixed; top: 70px; left: 50%; transform: translateX(-50%); display: flex; flex-direction: column; gap: 8px; z-index: 100; pointer-events: none; width: 90%; max-width: 400px; }
+        .toast { background: rgba(255, 255, 0, 0.95); color: black; padding: 10px 15px; font-weight: bold; border-radius: 5px; font-size: 9px; box-shadow: 0 0 10px yellow; animation: fadeInOut 4s forwards; text-align: center; }
+        @keyframes fadeInOut { 0% { opacity: 0; transform: translateY(-15px); } 10% { opacity: 1; transform: translateY(0); } 90% { opacity: 1; transform: translateY(0); } 100% { opacity: 0; transform: translateY(-15px); } }
+
+        .timer-refresh { font-size: 8px; color: #aaa; text-align: center; margin-bottom: 10px; font-family: 'Press Start 2P'; }
+    </style>
+</head>
+<body>
+
+    <div id="login-screen" class="screen">
+        <div class="login-box">
+            <h1>Create A Dino 3</h1>
+            <p style="font-size: 10px; color: #aaa; margin-bottom: 15px;">Insira um nome para salvar seu progresso no dispositivo.</p>
+            <input type="text" id="username" placeholder="Nome do Jogador" autocomplete="off">
+            <input type="password" id="password" placeholder="Senha (Para carregar depois)">
+            <button class="btn" onclick="Game.login()">JOGAR</button>
+        </div>
+    </div>
+
+    <div id="loading-screen" class="screen hidden">
+        <h1 class="pixel-font" style="color:var(--theme-color); font-size: 14px; text-align:center;">Carregando...</h1>
+        <div class="loading-bar-container">
+            <div id="loading-bar" class="loading-bar"></div>
+        </div>
+        <div id="loading-text">0%</div>
+    </div>
+
+    <div id="game-ui" class="hidden">
+        <div id="pause-banner">PAUSADO</div>
+        <div class="top-bar">
+            <button class="top-btn" onclick="UI.openPanel('biome-panel')">Biomas</button>
+            <button class="top-btn" onclick="UI.openPanel('contracts-panel')" style="color:#ff00ff; border-color:#ff00ff;">Missões</button>
+            <button class="top-btn" onclick="UI.openPanel('codes-panel')" style="color:#00ffff; border-color:#00ffff;">Códigos</button>
+            <div class="money-display">$ <span id="money">500.000</span></div>
+            <button class="top-btn" onclick="Game.togglePause()" id="pause-btn">⏸️ Pausa</button>
+            <button class="top-btn" onclick="AudioSystem.toggle()" id="sound-btn">🔊 Som: ON</button>
+            <button class="top-btn" onclick="UI.openPanel('tutorial-panel')" style="color:#ffff00; border-color:#ffff00;">Ajuda</button>
+            <button class="top-btn" onclick="UI.openPanel('dinerd-panel')">Dinerd</button>
+            <button class="top-btn" onclick="UI.openPanel('key-panel')" style="color:yellow; border-color:yellow;">API Key</button>
+        </div>
+
+        <div class="center-area">
+            <div style="display:flex; justify-content:space-between; width:100%; max-width:650px; align-items:center; margin-bottom:10px; padding:0 10px;">
+                <h3 id="current-biome-title" class="pixel-font" style="color:var(--theme-color); font-size:11px; text-transform:uppercase;">TERRESTRE</h3>
+                <button class="btn" style="width:auto; padding:6px 10px; font-size:7px; background:#ffaa00; margin:0;" onclick="Slots.treatAll()">💉 Tratar Todos (<span id="med-kits-count">3</span>)</button>
+            </div>
+            <div class="slots-grid" id="slots-container"></div>
+        </div>
+
+        <div class="sidebar">
+            <button class="btn" onclick="UI.openPanel('safari-panel')">Safari</button>
+            <button class="btn" onclick="UI.openPanel('shop-panel')">Shop</button>
+            <button class="btn" onclick="UI.openPanel('seller-panel')">Seller</button>
+        </div>
+
+        <div class="bottom-left">
+            <button class="btn" onclick="UI.openPanel('inventory-panel')">Inventário</button>
+        </div>
+    </div>
+
+    <div id="toast-container"></div>
+
+    <!-- PAINEL TUTORIAL -->
+    <div id="tutorial-panel" class="panel">
+        <div class="panel-header"><h2 class="panel-title" style="color:#ffff00;">Tutorial & Ajuda</h2><button class="close-btn" onclick="UI.closePanel('tutorial-panel')">X</button></div>
+        <div style="font-size:10px; line-height:1.5; color:#ccc; display:flex; flex-direction:column; gap:10px;">
+            <p>🦕 <strong style="color:var(--theme-color)">Criatório & Saúde:</strong> Suas criaturas possuem HP e podem adoecer. Se a saúde zerar, viram fósseis. Use kits de medicação ou compre mais na loja!</p>
+            <p>💬 <strong style="color:var(--theme-color)">IA com Memória Completa:</strong> O Dinerd e os negociadores do mercado conhecem absolutamente tudo sobre seu progresso, dinheiro e inventário em tempo real.</p>
+            <p>🏷️ <strong style="color:var(--theme-color)">Mercado (Seller):</strong> Ao enviar dinossauros para cá, compradores simulados por IA deixarão comentários avaliando sua criatura. Pelo menos um deles será um negociador com quem você poderá pechinchar via chat dedicado!</p>
+        </div>
+    </div>
+
+    <!-- PAINEL CONTRATOS -->
+    <div id="contracts-panel" class="panel">
+        <div class="panel-header"><h2 class="panel-title" style="color:#ff00ff;">Contratos Científicos</h2><button class="close-btn" onclick="UI.closePanel('contracts-panel')">X</button></div>
+        <div class="item-list" id="contracts-list"></div>
+    </div>
+
+    <!-- PAINEL CÓDIGOS -->
+    <div id="codes-panel" class="panel" style="max-width:320px; text-align:center;">
+        <div class="panel-header"><h2 class="panel-title" style="color:#00ffff;">Resgatar Código</h2><button class="close-btn" onclick="UI.closePanel('codes-panel')">X</button></div>
+        <input type="text" id="code-input" placeholder="Digite o código promocional..." style="width:100%; padding:12px; margin-bottom:12px; background:#222; color:white; border:1px solid #00ffff; border-radius:4px; font-size:11px; text-transform: uppercase;">
+        <button class="btn" style="background:#00ffff; color:black;" onclick="PromoCodes.redeem()">Resgatar</button>
+    </div>
+
+    <!-- PAINEL CONFIGURAÇÃO DA CHAVE API -->
+    <div id="key-panel" class="panel">
+        <div class="panel-header"><h2 class="panel-title">Chave OpenRouter</h2><button class="close-btn" onclick="UI.closePanel('key-panel')">X</button></div>
+        <p style="font-size:9px; color:#aaa; margin-bottom:10px;">Insira sua API Key da OpenRouter.</p>
+        <input type="password" id="input-api-key" placeholder="sk-or-v1-..." style="width:100%; padding:10px; background:#222; border:1px solid var(--theme-color); color:white; border-radius:4px; font-size:11px; margin-bottom:10px;">
+        <button class="btn" onclick="AI.saveApiKey()">Salvar Chave no Jogo</button>
+    </div>
+
+    <!-- PAINÉIS DO JOGO -->
+    <div id="biome-panel" class="panel">
+        <div class="panel-header"><h2 class="panel-title">Biomas</h2><button class="close-btn" onclick="UI.closePanel('biome-panel')">X</button></div>
+        <p style="font-size:9px; color:#aaa; margin-bottom:10px;">Cada bioma gerencia seus próprios slots isoladamente!</p>
+        <div class="item-list">
+            <div class="list-item"><div class="list-item-row"><div class="dino-info"><h4>Terrestre</h4></div><button class="btn" onclick="Game.changeBiome('terrestre')">Entrar</button></div></div>
+            <div class="list-item"><div class="list-item-row"><div class="dino-info"><h4>Marinho</h4></div><button class="btn" id="btn-marinho" onclick="Game.buyOrChangeBiome('marinho', 150000000)">$150.000.000</button></div></div>
+            <div class="list-item"><div class="list-item-row"><div class="dino-info"><h4>Voador</h4></div><button class="btn" id="btn-voador" onclick="Game.buyOrChangeBiome('voador', 400000000)">$400.000.000</button></div></div>
+        </div>
+    </div>
+
+    <div id="dinerd-panel" class="panel">
+        <div class="panel-header"><h2 class="panel-title">Dinerd IA (Acesso Total)</h2><button class="close-btn" onclick="UI.closePanel('dinerd-panel')">X</button></div>
+        <div class="chat-box" id="dinerd-chat"></div>
+        <div class="chat-input-area">
+            <input type="text" id="dinerd-input" placeholder="Pergunte sobre seus dinos, dinheiro...">
+            <button class="btn" onclick="AI.sendDinerdMessage()">Enviar</button>
+        </div>
+    </div>
+
+    <div id="safari-panel" class="panel">
+        <div class="panel-header"><h2 class="panel-title">Safari <span id="safari-biome-label"></span></h2><button class="close-btn" onclick="UI.closePanel('safari-panel')">X</button></div>
+        <div class="timer-refresh" id="safari-timer">Nova remessa em: --:--:--</div>
+        <div class="item-list" id="safari-list"></div>
+    </div>
+
+    <div id="shop-panel" class="panel">
+        <div class="panel-header"><h2 class="panel-title">Mega Loja Global</h2><button class="close-btn" onclick="UI.closePanel('shop-panel')">X</button></div>
+        <div class="item-list">
+            <div class="list-item"><div class="list-item-row"><div class="dino-info"><h4>Time Skip (1 Hora)</h4><p>Acelera incubação em 1 hora.</p></div><button class="btn" onclick="Shop.buy('ts_1h', 100000)">$100.000</button></div></div>
+            <div class="list-item"><div class="list-item-row"><div class="dino-info"><h4>Time Skip (12 Horas)</h4><p>Acelera incubação em 12 horas.</p></div><button class="btn" onclick="Shop.buy('ts_12h', 1000000)">$1.000.000</button></div></div>
+            <div class="list-item"><div class="list-item-row"><div class="dino-info"><h4>Time Skip (24 Horas / 1 Dia)</h4><p>Acelera incubação em 1 dia.</p></div><button class="btn" onclick="Shop.buy('ts_24h', 1800000)">$1.800.000</button></div></div>
+            <div class="list-item"><div class="list-item-row"><div class="dino-info"><h4>Time Skip (72 Horas / 3 Dias)</h4><p>Ideal para Spinosaurus e espécies longas.</p></div><button class="btn" onclick="Shop.buy('ts_72h', 4500000)">$4.500.000</button></div></div>
+            <div class="list-item"><div class="list-item-row"><div class="dino-info"><h4>Kit de Medicação (5 un)</h4><p>Usado para curar criaturas doentes.</p></div><button class="btn" onclick="Shop.buy('med_kit', 50000)">$50.000</button></div></div>
+            <div class="list-item"><div class="list-item-row"><div class="dino-info"><h4>Soro de Mutação Perfeita</h4></div><button class="btn" onclick="Shop.buy('mut_serum', 30000000)">$30.000.000</button></div></div>
+            <div class="list-item"><div class="list-item-row"><div class="dino-info"><h4>Impulso de Vendas</h4></div><button class="btn" onclick="Shop.buy('reset_market', 10000000)">$10.000.000</button></div></div>
+            <div class="list-item"><div class="list-item-row"><div class="dino-info"><h4>Ticket Safari Imediato</h4></div><button class="btn" onclick="Shop.buy('safari_refresh', 5000000)">$5.000.000</button></div></div>
+        </div>
+    </div>
+
+    <div id="seller-panel" class="panel">
+        <div class="panel-header"><h2 class="panel-title">Seller - Mercado</h2><button class="close-btn" onclick="UI.closePanel('seller-panel')">X</button></div>
+        <div class="item-list" id="seller-list"></div>
+    </div>
+
+    <div id="nego-panel" class="panel" style="z-index: 60;">
+        <div class="panel-header"><h2 class="panel-title">Negociação <span id="nego-timer" style="color:yellow;font-size:8px;">(5 msgs)</span></h2><button class="close-btn" onclick="UI.closePanel('nego-panel')">Sair</button></div>
+        <div class="chat-box" id="nego-chat"></div>
+        <div class="chat-input-area">
+            <input type="text" id="nego-input" placeholder="Contra-proposta...">
+            <button class="btn" onclick="Market.sendNegoMessage()">Falar</button>
+        </div>
+    </div>
+
+    <div id="inventory-panel" class="panel">
+        <div class="panel-header"><h2 class="panel-title">Inventário Global</h2><button class="close-btn" onclick="UI.closePanel('inventory-panel')">X</button></div>
+        <div style="display:flex; gap:8px; margin-bottom:12px;">
+            <button class="btn" style="font-size:7px; padding:8px;" onclick="Inventory.showTab('unincubated')">Ovos</button>
+            <button class="btn" style="font-size:7px; padding:8px;" onclick="Inventory.showTab('incubated')">Guardados / Fósseis</button>
+        </div>
+        <div class="item-list" id="inv-list"></div>
+    </div>
+
+    <div id="name-egg-panel" class="panel" style="max-width:320px; text-align:center;">
+        <div class="panel-header"><h2 class="panel-title">Incubar Ovo</h2><button class="close-btn" onclick="UI.closePanel('name-egg-panel')">X</button></div>
+        <input type="text" id="egg-name-input" placeholder="Nome do dinossauro" style="width:100%; padding:12px; margin-bottom:12px; background:#222; color:white; border:1px solid var(--theme-color); border-radius:4px; font-size:11px;">
+        <button class="btn" onclick="Slots.confirmIncubation()">Iniciar Incubação</button>
+    </div>
+
+    <script>
+        const AI_CONFIG = {
+            model: "cognitivecomputations/dolphin-mistral-24b-venice-edition",
+            getApiKey() { return localStorage.getItem('cad3_apikey') || ""; }
+        };
+
+        const AudioSystem = {
+            enabled: true,
+            ctx: null,
+            init() {
+                try {
+                    window.AudioContext = window.AudioContext || window.webkitAudioContext;
+                    this.ctx = new AudioContext();
+                } catch(e) { console.log("Web Audio API not supported"); }
+            },
+            toggle() {
+                this.enabled = !this.enabled;
+                document.getElementById('sound-btn').innerText = this.enabled ? "🔊 Som: ON" : "🔇 Som: OFF";
+            },
+            play(type) {
+                if(!this.enabled) return;
+                if(!this.ctx) this.init();
+                if(!this.ctx) return;
+                if(this.ctx.state === 'suspended') { this.ctx.resume(); }
+
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+
+                const now = this.ctx.currentTime;
+                if(type === 'click') {
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(400, now);
+                    osc.frequency.exponentialRampToValueAtTime(800, now + 0.05);
+                    gain.gain.setValueAtTime(0.1, now);
+                    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.05);
+                    osc.start(now);
+                    osc.stop(now + 0.05);
+                } else if(type === 'hatch') {
+                    osc.type = 'triangle';
+                    osc.frequency.setValueAtTime(300, now);
+                    osc.frequency.exponentialRampToValueAtTime(600, now + 0.2);
+                    gain.gain.setValueAtTime(0.2, now);
+                    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.2);
+                    osc.start(now);
+                    osc.stop(now + 0.2);
+                } else if(type === 'alert') {
+                    osc.type = 'sawtooth';
+                    osc.frequency.setValueAtTime(200, now);
+                    osc.frequency.setValueAtTime(150, now + 0.1);
+                    gain.gain.setValueAtTime(0.2, now);
+                    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.25);
+                    osc.start(now);
+                    osc.stop(now + 0.25);
+                }
+            }
+        };
+
+        const DINO_DATA = {
+            terrestre: [
+                { s: 'Compsognathus', r: 'Comum', p: 150000, t: 1 },
+                { s: 'Gallimimus', r: 'Comum', p: 180000, t: 20 },
+                { s: 'Oviraptor', r: 'Comum', p: 250000, t: 25 },
+                { s: 'Dryosaurus', r: 'Comum', p: 300000, t: 30 },
+                { s: 'Psittacosaurus', r: 'Comum', p: 350000, t: 35 },
+                { s: 'Pachycephalosaurus', r: 'Comum', p: 400000, t: 40 },
+                { s: 'Protoceratops', r: 'Comum', p: 500000, t: 45 },
+                { s: 'Minmi', r: 'Comum', p: 600000, t: 50 },
+                { s: 'Microceratus', r: 'Comum', p: 700000, t: 55 },
+                { s: 'Hypsilophodon', r: 'Comum', p: 900000, t: 60 },
+                
+                { s: 'Ankylosaurus', r: 'Incomum', p: 1500000, t: 120 },
+                { s: 'Stegosaurus', r: 'Incomum', p: 1800000, t: 150 },
+                { s: 'Kentrosaurus', r: 'Incomum', p: 2000000, t: 180 },
+                { s: 'Triceratops', r: 'Incomum', p: 2500000, t: 200 },
+                { s: 'Styracosaurus', r: 'Incomum', p: 2800000, t: 240 },
+                { s: 'Pachyrhinosaurus', r: 'Incomum', p: 3500000, t: 260 },
+                { s: 'Iguanodon', r: 'Incomum', p: 4000000, t: 300 },
+                { s: 'Parasaurolophus', r: 'Incomum', p: 4500000, t: 300 },
+                
+                { s: 'Corythosaurus', r: 'Raro', p: 10000000, t: 720 },
+                { s: 'Edmontosaurus', r: 'Raro', p: 12000000, t: 800 },
+                { s: 'Maiasaura', r: 'Raro', p: 15000000, t: 1000 },
+                { s: 'Dilophosaurus', r: 'Raro', p: 20000000, t: 1200 },
+                { s: 'Ceratosaurus', r: 'Raro', p: 25000000, t: 1440 },
+                { s: 'Carnotaurus', r: 'Raro', p: 30000000, t: 1600 },
+                
+                { s: 'Allosaurus', r: 'Épico', p: 60000000, t: 2880 },
+                { s: 'Baryonyx', r: 'Épico', p: 75000000, t: 3500 },
+                { s: 'Suchomimus', r: 'Épico', p: 90000000, t: 4000 },
+                { s: 'Yutyrannus', r: 'Épico', p: 120000000, t: 5000 },
+                
+                { s: 'Giganotosaurus', r: 'Lendário', p: 220000000, t: 10080 },
+                { s: 'Spinosaurus', r: 'Lendário', p: 300000000, t: 14400 }
+            ],
+            marinho: [
+                { s: 'Ichthyosaurus', r: 'Comum', p: 200000, t: 1 },
+                { s: 'Nothosaurus', r: 'Comum', p: 250000, t: 25 },
+                { s: 'Placodus', r: 'Comum', p: 300000, t: 30 },
+                { s: 'Lariosaurus', r: 'Comum', p: 350000, t: 35 },
+                { s: 'Ophthalmosaurus', r: 'Comum', p: 450000, t: 40 },
+                { s: 'Shastasaurus', r: 'Comum', p: 500000, t: 45 },
+                { s: 'Cymbospondylus', r: 'Comum', p: 600000, t: 50 },
+                { s: 'Cryptoclidus', r: 'Comum', p: 700000, t: 55 },
+                { s: 'Halisaurus', r: 'Comum', p: 800000, t: 60 },
+                { s: 'Geosaurus', r: 'Comum', p: 950000, t: 65 },
+
+                { s: 'Plesiosaurus', r: 'Incomum', p: 1600000, t: 130 },
+                { s: 'Elasmosaurus', r: 'Incomum', p: 1900000, t: 160 },
+                { s: 'Styxosaurus', r: 'Incomum', p: 2200000, t: 190 },
+                { s: 'Attenborosaurus', r: 'Incomum', p: 2600000, t: 210 },
+                { s: 'Archelon', r: 'Incomum', p: 2900000, t: 250 },
+                { s: 'Protostega', r: 'Incomum', p: 3600000, t: 270 },
+                { s: 'Rhomaleosaurus', r: 'Incomum', p: 4100000, t: 310 },
+                { s: 'Liopleurodon', r: 'Incomum', p: 4600000, t: 320 },
+
+                { s: 'Kronosaurus', r: 'Raro', p: 11000000, t: 750 },
+                { s: 'Mosasaurus', r: 'Raro', p: 13000000, t: 820 },
+                { s: 'Tylosaurus', r: 'Raro', p: 16000000, t: 1050 },
+                { s: 'Prognathodon', r: 'Raro', p: 21000000, t: 1250 },
+                { s: 'Platecarpus', r: 'Raro', p: 26000000, t: 1480 },
+                { s: 'Globidens', r: 'Raro', p: 31000000, t: 1650 },
+
+                { s: 'Dunkleosteus', r: 'Épico', p: 65000000, t: 2900 },
+                { s: 'Xiphactinus', r: 'Épico', p: 80000000, t: 3600 },
+                { s: 'Cretoxyrhina', r: 'Épico', p: 95000000, t: 4100 },
+                { s: 'Megalodon', r: 'Épico', p: 130000000, t: 5100 },
+
+                { s: 'Livyatan', r: 'Lendário', p: 230000000, t: 10200 },
+                { s: 'Leedsichthys', r: 'Lendário', p: 310000000, t: 14500 }
+            ],
+            voador: [
+                { s: 'Dimorphodon', r: 'Comum', p: 180000, t: 1 },
+                { s: 'Pteranodon', r: 'Comum', p: 210000, t: 22 },
+                { s: 'Tapejara', r: 'Comum', p: 280000, t: 28 },
+                { s: 'Tropeognathus', r: 'Comum', p: 320000, t: 32 },
+                { s: 'Cearadactylus', r: 'Comum', p: 380000, t: 38 },
+                { s: 'Geosternbergia', r: 'Comum', p: 420000, t: 42 },
+                { s: 'Maaradactylus', r: 'Comum', p: 550000, t: 48 },
+                { s: 'Nyctosaurus', r: 'Comum', p: 650000, t: 52 },
+                { s: 'Pterodactylus', r: 'Comum', p: 750000, t: 58 },
+                { s: 'Rhamphorhynchus', r: 'Comum', p: 850000, t: 62 },
+
+                { s: 'Anhanguera', r: 'Incomum', p: 1700000, t: 140 },
+                { s: 'Coloborhynchus', r: 'Incomum', p: 2100000, t: 170 },
+                { s: 'Ornithocheirus', r: 'Incomum', p: 2400000, t: 210 },
+                { s: 'Thalassodromeus', r: 'Incomum', p: 2700000, t: 230 },
+                { s: 'Tupandactylus', r: 'Incomum', p: 3000000, t: 260 },
+                { s: 'Dsungaripterus', r: 'Incomum', p: 3800000, t: 280 },
+                { s: 'Guidraco', r: 'Incomum', p: 4300000, t: 320 },
+                { s: 'Ludodactylus', r: 'Incomum', p: 4800000, t: 340 },
+
+                { s: 'Quetzalcoatlus', r: 'Raro', p: 12000000, t: 780 },
+                { s: 'Hatzegopteryx', r: 'Raro', p: 14000000, t: 850 },
+                { s: 'Arambourgiania', r: 'Raro', p: 17000000, t: 1100 },
+                { s: 'Alanqa', r: 'Raro', p: 22000000, t: 1300 },
+                { s: 'Aerotitan', r: 'Raro', p: 27000000, t: 1550 },
+                { s: 'Cryodrakon', r: 'Raro', p: 32000000, t: 1750 },
+
+                { s: 'Argentavis', r: 'Épico', p: 70000000, t: 3100 },
+                { s: 'Pelagornis', r: 'Épico', p: 85000000, t: 3800 },
+                { s: 'Osteodontornis', r: 'Épico', p: 100000000, t: 4300 },
+                { s: 'Haast Eagle', r: 'Épico', p: 140000000, t: 5300 },
+
+                { s: 'Quetzalcoatlus Alpha', r: 'Lendário', p: 250000000, t: 10500 },
+                { s: 'Dragon', r: 'Lendário', p: 330000000, t: 15000 }
+            ]
+        };
+
+        const MUTATIONS = {
+            bad: ['Lento', 'Míope', 'Assustado', 'Frágil', 'Comilão', 'Agressivo', 'Manco', 'Anão', 'Pele Fina', 'Surdo'],
+            good: ['Veloz', 'Resistente', 'Visão Noturna', 'Dentes de Sabres', 'Armadura Óssea', 'Gigante', 'Inteligente', 'Camuflagem', 'Venenoso', 'Alfa', 'Bioluminescente'],
+            skins: ['Albino', 'Melânico', 'Dourado', 'Azul Real', 'Vermelho Vulcão', 'Verde Tóxico', 'Sombra', 'Arco-Íris']
+        };
+
+        const BUYER_NAMES = ["RexFan99", "DinoBuyer_SP", "PaleoTrader", "FossilHunterX", "JurassicBoss", "MegaCollector", "AncientBargainer", "T-RexHater", "CryptoDino", "BioDomeOwner"];
+        const BUYER_PHRASES = [
+            { good: "Espécie incrível, excelente constituição genética!", bad: "O preço está um pouco salgado.", buy: true },
+            { good: "Adorei as mutações dessa criatura.", bad: "Tem alguns defeitos físicos notáveis.", buy: true },
+            { good: "Não sei se vale tudo isso...", bad: "Achei bem fraco pelo preço cobrado.", buy: false },
+            { good: "Perfeito para o meu santuário particular!", bad: "Exige muita manutenção.", buy: true },
+            { good: "Passo longe desse bicho.", bad: "Estética duvidosa e stats ruins.", buy: false }
+        ];
+
+        let state = {
+            user: '', money: 500000, medKits: 3, safariRefreshTime: 0, paused: false,
+            biomes: { terrestre: { unlocked: true, slots: [] }, marinho: { unlocked: false, slots: [] }, voador: { unlocked: false, slots: [] } },
+            currentBiome: 'terrestre',
+            inventory: { unincubated: [], incubated: [] },
+            safari: [], market: [], usedCodes: [], dinerdHistory: [],
+            contracts: [
+                { id: 'c1', title: 'Primeiro Ovo', desc: 'Chocar 1 dinossauro', target: 1, current: 0, reward: 1000, completed: false },
+                { id: 'c2', title: 'Reserva Científica', desc: 'Chocar 3 dinossauros', target: 3, current: 0, reward: 5000, completed: false },
+                { id: 'c3', title: 'Magnata do Parque', desc: 'Acumular $10.000', target: 10000, current: 0, reward: 10000, completed: false },
+                { id: 'c4', title: 'Veterinário Master', desc: 'Manter criaturas saudáveis', target: 5, current: 0, reward: 25000, completed: false }
+            ]
+        };
+        
+        let loopInterval, safariInterval, diseaseInterval, activeEggIndex = null;
+        let activeNego = { dinoIndex: null, msgsLeft: 0, currentOffer: 0, history: [] };
+
+        const PromoCodes = {
+            list: {
+                'STARTERPACK': function() {
+                    state.money += 5000;
+                    let dino = { uid: Core.generateUID(), species: 'Stegosaurus', rarity: 'Incomum', basePrice: 1800000, hatchMs: 0, emoji: '🦖', age: 0, originBiome: 'terrestre', muts: { bad: [], good: [], skin: null }, hp: 100, maxHp: 100, status: 'healthy', comments: [] };
+                    dino.muts.good.push(MUTATIONS.good[Math.floor(Math.random()*MUTATIONS.good.length)]);
+                    dino.finalPrice = dino.basePrice * 1.5;
+                    dino.name = 'Stego Starter';
+                    state.inventory.incubated.push(dino);
+                    return "Você ganhou $5.000 e um Stegosaurus!";
+                },
+                'GRANA': function() {
+                    state.money += 50000;
+                    return "Você ganhou $50.000!";
+                }
+            },
+            redeem() {
+                AudioSystem.play('click');
+                const input = document.getElementById('code-input').value.trim().toUpperCase();
+                if(!input) return;
+                
+                if(!state.usedCodes) state.usedCodes = [];
+                if(state.usedCodes.includes(input)) {
+                    Core.toast("Código já utilizado nesta conta!");
+                    return;
+                }
+
+                if(this.list[input]) {
+                    const msg = this.list[input]();
+                    state.usedCodes.push(input);
+                    Core.toast(msg);
+                    UI.updateAll();
+                    document.getElementById('code-input').value = '';
+                    Core.save();
+                } else {
+                    Core.toast("Código inválido!");
+                }
+            }
+        };
+
+        const Contracts = {
+            check(type, val = 1) {
+                state.contracts.forEach(c => {
+                    if(!c.completed) {
+                        if(c.id === 'c1' && type === 'hatch') c.current = Math.min(c.target, c.current + val);
+                        if(c.id === 'c2' && type === 'hatch') c.current = Math.min(c.target, c.current + val);
+                        if(c.id === 'c3' && type === 'money') c.current = Math.max(c.current, state.money);
+                        if(c.id === 'c4' && type === 'alive') c.current = Math.min(c.target, c.current + val);
+                        
+                        if(c.current >= c.target && !c.completed) {
+                            c.completed = true;
+                            state.money += c.reward;
+                            Core.toast(`Contrato Concluído: ${c.title}! +$${Core.formatMoney(c.reward)}`);
+                            AudioSystem.play('hatch');
+                        }
+                    }
+                });
+            },
+            render() {
+                const c = document.getElementById('contracts-list');
+                c.innerHTML = '';
+                state.contracts.forEach(ct => {
+                    let prog = Math.floor((ct.current / ct.target) * 100);
+                    if(prog > 100) prog = 100;
+                    c.innerHTML += `
+                        <div class="list-item">
+                            <div class="list-item-row">
+                                <div class="dino-info">
+                                    <h4 style="color:${ct.completed ? '#0f0' : '#ff00ff'}">${ct.title} ${ct.completed ? '(Concluído)' : ''}</h4>
+                                    <p>${ct.desc}</p>
+                                    <p>Progresso: ${ct.current} / ${ct.target} (${prog}%)</p>
+                                </div>
+                                <div style="font-size:9px; color:#0f0; text-align:right;">Recompensa:<br>$${Core.formatMoney(ct.reward)}</div>
+                            </div>
+                        </div>
+                    `;
+                });
+            }
+        };
+
+        const Core = {
+            init() {
+                if(localStorage.getItem('cad3_session')) { document.getElementById('username').value = localStorage.getItem('cad3_session'); }
+            },
+            formatMoney(val) { return val.toLocaleString('pt-BR'); },
+            generateUID() { return Math.random().toString(36).substr(2, 9); },
+            save() { 
+                localStorage.setItem(`cad3_state_${state.user}`, JSON.stringify(state)); 
+            },
+            load(user) {
+                const s = localStorage.getItem(`cad3_state_${user}`);
+                if(s) { 
+                    state = JSON.parse(s); 
+                    if(!state.dinerdHistory) state.dinerdHistory = []; 
+                    if(!state.usedCodes) state.usedCodes = []; 
+                    if(state.medKits === undefined) state.medKits = 3;
+                    if(!state.contracts) {
+                        state.contracts = [
+                            { id: 'c1', title: 'Primeiro Ovo', desc: 'Chocar 1 dinossauro', target: 1, current: 0, reward: 1000, completed: false },
+                            { id: 'c2', title: 'Reserva Científica', desc: 'Chocar 3 dinossauros', target: 3, current: 0, reward: 5000, completed: false },
+                            { id: 'c3', title: 'Magnata do Parque', desc: 'Acumular $10.000', target: 10000, current: 0, reward: 10000, completed: false },
+                            { id: 'c4', title: 'Veterinário Master', desc: 'Manter criaturas saudáveis', target: 5, current: 0, reward: 25000, completed: false }
+                        ];
+                    }
+                    return true; 
+                }
+                return false;
+            },
+            toast(msg) {
+                const tc = document.getElementById('toast-container');
+                const t = document.createElement('div');
+                t.className = 'toast'; t.innerText = msg;
+                tc.appendChild(t);
+                setTimeout(() => t.remove(), 4000);
+            },
+            formatTime(ms) {
+                if(ms <= 0) return "Pronto!";
+                let s = Math.floor(ms / 1000);
+                let m = Math.floor(s / 60); s = s % 60;
+                let h = Math.floor(m / 60); m = m % 60;
+                return `${h.toString().padStart(2,'0')}:${m.toString().padStart(2,'0')}:${s.toString().padStart(2,'0')}`;
+            }
+        };
+
+        const AI = {
+            saveApiKey() {
+                AudioSystem.play('click');
+                const key = document.getElementById('input-api-key').value.trim();
+                if(!key) return;
+                localStorage.setItem('cad3_apikey', key);
+                Core.toast("API Key salva no dispositivo!");
+                UI.closePanel('key-panel');
+            },
+            async fetch(messagesArray) {
+                const key = AI_CONFIG.getApiKey();
+                if(!key) return "ERRO: API Key não configurada. Vá no botão amarelo no topo e adicione a chave OpenRouter.";
+                try {
+                    const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+                        method: "POST",
+                        headers: { "Authorization": `Bearer ${key}`, "Content-Type": "application/json" },
+                        body: JSON.stringify({ model: AI_CONFIG.model, messages: messagesArray })
+                    });
+                    const data = await res.json();
+                    if(data.choices && data.choices.length > 0) return data.choices[0].message.content;
+                    return "Erro na resposta da IA.";
+                } catch(e) { return "Erro de conexão com OpenRouter."; }
+            },
+            async sendDinerdMessage() {
+                AudioSystem.play('click');
+                const inp = document.getElementById('dinerd-input');
+                const text = inp.value.trim();
+                if(!text) return;
+                inp.value = '';
+                this.addChatMsg('dinerd-chat', text, 'user');
+                
+                const gameStateSummary = `ESTADO ATUAL DO JOGO: ${JSON.stringify(state)}`;
+                let sys = "Você é Dinerd, assistente virtual sarcástico de um jogo de administração de parques de dinossauros (Create A Dino 3). Você tem acesso TOTAL a todas as mecânicas, dados e estado atual do jogador. Responda em pt-br.";
+                
+                if(!state.dinerdHistory || state.dinerdHistory.length === 0) {
+                    state.dinerdHistory = [{ role: 'system', content: sys }];
+                }
+                
+                state.dinerdHistory[0].content = sys + "\n" + gameStateSummary;
+                state.dinerdHistory.push({ role: 'user', content: text });
+                this.addChatMsg('dinerd-chat', "Pensando...", 'ia', 'temp-dinerd');
+                
+                const reply = await this.fetch(state.dinerdHistory);
+                
+                document.getElementById('temp-dinerd')?.remove();
+                this.addChatMsg('dinerd-chat', reply, 'ia');
+                state.dinerdHistory.push({ role: 'assistant', content: reply });
+                Core.save();
+            },
+            addChatMsg(containerId, text, type, id=null) {
+                const c = document.getElementById(containerId);
+                const d = document.createElement('div');
+                d.className = `msg ${type}`;
+                d.innerText = text;
+                if(id) d.id = id;
+                c.appendChild(d);
+                c.scrollTop = c.scrollHeight;
+            }
+        };
+
+        const Game = {
+            login() {
+                AudioSystem.play('click');
+                const u = document.getElementById('username').value.trim();
+                if(!u) { Core.toast("Digite um nome!"); return; }
+                document.getElementById('login-screen').classList.add('hidden');
+                document.getElementById('loading-screen').classList.remove('hidden');
+                localStorage.setItem('cad3_session', u);
+                
+                let p = 0;
+                const i = setInterval(() => {
+                    p += 20;
+                    document.getElementById('loading-bar').style.width = p + '%';
+                    document.getElementById('loading-text').innerText = p + '%';
+                    if(p >= 100) {
+                        clearInterval(i);
+                        setTimeout(() => {
+                            document.getElementById('loading-screen').classList.add('hidden');
+                            document.getElementById('game-ui').classList.remove('hidden');
+                            if(!Core.load(u)) {
+                                state.user = u;
+                                for(let j=0; j<8; j++) state.biomes.terrestre.slots.push({ active: false });
+                                for(let j=0; j<8; j++) state.biomes.marinho.slots.push({ active: false });
+                                for(let j=0; j<8; j++) state.biomes.voador.slots.push({ active: false });
+                                Core.save();
+                            } else {
+                                state.user = u;
+                            }
+                            this.startLoops();
+                            UI.updateAll();
+                            Safari.init();
+                        }, 500);
+                    }
+                }, 200);
+            },
+            togglePause() {
+                AudioSystem.play('click');
+                state.paused = !state.paused;
+                const btn = document.getElementById('pause-btn');
+                const banner = document.getElementById('pause-banner');
+                if(state.paused) {
+                    btn.innerText = "▶️ Continuar";
+                    btn.style.color = "#0f0";
+                    btn.style.borderColor = "#0f0";
+                    banner.classList.add('active');
+                } else {
+                    btn.innerText = "⏸️ Pausa";
+                    btn.style.color = "var(--theme-color)";
+                    btn.style.borderColor = "var(--theme-color)";
+                    banner.classList.remove('active');
+                }
+            },
+            buyOrChangeBiome(b, price) {
+                AudioSystem.play('click');
+                if(state.biomes[b].unlocked) { this.changeBiome(b); return; }
+                if(state.money >= price) {
+                    state.money -= price;
+                    state.biomes[b].unlocked = true;
+                    Core.toast(`Bioma ${b.toUpperCase()} desbloqueado!`);
+                    UI.closePanel('biome-panel');
+                    this.changeBiome(b);
+                } else { Core.toast("Dinheiro insuficiente!"); }
+            },
+            changeBiome(b) {
+                AudioSystem.play('click');
+                if(!state.biomes[b].unlocked) return;
+                state.currentBiome = b;
+                UI.closePanel('biome-panel');
+                UI.updateAll();
+                let color = b==='terrestre'?'#00ff00':b==='marinho'?'#0088ff':'#ffff00';
+                document.documentElement.style.setProperty('--theme-color', color);
+                document.getElementById('current-biome-title').innerText = b;
+                document.getElementById('safari-biome-label').innerText = b;
+                Safari.generateItems();
+                Core.save();
+            },
+            startLoops() {
+                loopInterval = setInterval(() => {
+                    if(state.paused) return;
+                    let changed = false;
+                    const now = Date.now();
+                    Object.keys(state.biomes).forEach(b => {
+                        state.biomes[b].slots.forEach(slot => {
+                            if(slot.active && slot.egg && slot.egg.finishTime && now < slot.egg.finishTime) { changed = true; }
+                        });
+                    });
+                    Contracts.check('money', state.money);
+                    if(changed) UI.renderSlots();
+                }, 1000);
+
+                diseaseInterval = setInterval(() => {
+                    if(state.paused) return;
+                    let updated = false;
+                    Object.keys(state.biomes).forEach(b => {
+                        state.biomes[b].slots.forEach(slot => {
+                            if(slot.active && slot.dino) {
+                                let dino = slot.dino;
+                                if(dino.status === 'dead') return;
+
+                                if(dino.status === 'healthy' && Math.random() < 0.03) {
+                                    dino.status = 'sick';
+                                    AudioSystem.play('alert');
+                                    Core.toast(`Alerta: ${dino.name} (${dino.species}) adoeceu!`);
+                                    updated = true;
+                                }
+
+                                if(dino.status === 'sick') {
+                                    dino.hp -= 5;
+                                    if(dino.hp <= 0) {
+                                        dino.hp = 0;
+                                        dino.status = 'dead';
+                                        dino.species = 'Fóssil de ' + dino.species;
+                                        AudioSystem.play('alert');
+                                        Core.toast(`Tragédia: ${dino.name} morreu e virou um Fóssil!`);
+                                    }
+                                    updated = true;
+                                }
+                            }
+                        });
+                    });
+                    if(updated) {
+                        UI.renderSlots();
+                        Core.save();
+                    }
+                }, 1000);
+            }
+        };
+
+        const Slots = {
+            open(index) {
+                AudioSystem.play('click');
+                const s = state.biomes[state.currentBiome].slots[index];
+                if(s.active) return;
+                activeEggIndex = index;
+                Inventory.showTab('unincubated');
+                UI.openPanel('inventory-panel');
+            },
+            selectEggToIncubate(uid) {
+                AudioSystem.play('click');
+                UI.closePanel('inventory-panel');
+                state.tempIncubateUid = uid;
+                document.getElementById('egg-name-input').value = '';
+                UI.openPanel('name-egg-panel');
+            },
+            confirmIncubation() {
+                AudioSystem.play('click');
+                const name = document.getElementById('egg-name-input').value.trim();
+                if(!name) { Core.toast("Dê um nome ao dinossauro!"); return; }
+                
+                const idx = state.inventory.unincubated.findIndex(e => e.uid === state.tempIncubateUid);
+                if(idx === -1) return;
+                const egg = state.inventory.unincubated[idx];
+                
+                if(egg.originBiome !== state.currentBiome) {
+                    Core.toast(`Este ovo precisa ser incubado no bioma ${egg.originBiome}!`);
+                    return;
+                }
+
+                egg.name = name;
+                egg.finishTime = Date.now() + egg.hatchMs;
+                state.inventory.unincubated.splice(idx, 1);
+                
+                state.biomes[state.currentBiome].slots[activeEggIndex].active = true;
+                state.biomes[state.currentBiome].slots[activeEggIndex].egg = egg;
+                state.biomes[state.currentBiome].slots[activeEggIndex].dino = null;
+                
+                UI.closePanel('name-egg-panel');
+                Core.save();
+                UI.renderSlots();
+            },
+            collect(index) {
+                AudioSystem.play('hatch');
+                const s = state.biomes[state.currentBiome].slots[index];
+                if(s.active && s.egg && Date.now() >= s.egg.finishTime) {
+                    let egg = s.egg;
+                    this.applyMutations(egg);
+                    egg.hp = 100;
+                    egg.maxHp = 100;
+                    egg.status = 'healthy';
+                    egg.comments = [];
+                    
+                    s.egg = null;
+                    s.dino = egg;
+                    
+                    Contracts.check('hatch', 1);
+                    Contracts.check('alive', 1);
+                    Core.toast("Dinossauro chocado e alocado no Criatório!");
+                    Core.save();
+                    UI.renderSlots();
+                }
+            },
+            treat(index) {
+                AudioSystem.play('click');
+                const s = state.biomes[state.currentBiome].slots[index];
+                if(s.active && s.dino && s.dino.status === 'sick') {
+                    if(state.medKits > 0) {
+                        state.medKits--;
+                        s.dino.hp = 100;
+                        s.dino.status = 'healthy';
+                        Core.toast(`${s.dino.name} foi curado com sucesso!`);
+                        UI.updateMedKits();
+                        Core.save();
+                        UI.renderSlots();
+                    } else {
+                        Core.toast("Você não tem Kits de Medicação! Compre na Loja.");
+                    }
+                }
+            },
+            treatAll() {
+                AudioSystem.play('click');
+                let curedCount = 0;
+                Object.keys(state.biomes).forEach(b => {
+                    state.biomes[b].slots.forEach(slot => {
+                        if(slot.active && slot.dino && slot.dino.status === 'sick' && state.medKits > 0) {
+                            state.medKits--;
+                            slot.dino.hp = 100;
+                            slot.dino.status = 'healthy';
+                            curedCount++;
+                        }
+                    });
+                });
+                if(curedCount > 0) {
+                    Core.toast(`${curedCount} criaturas tratadas com sucesso!`);
+                    UI.updateMedKits();
+                    Core.save();
+                    UI.renderSlots();
+                } else {
+                    Core.toast("Nenhuma criatura doente para tratar ou sem kits!");
+                }
+            },
+            sendToInventory(index) {
+                AudioSystem.play('click');
+                const s = state.biomes[state.currentBiome].slots[index];
+                if(s.active && s.dino) {
+                    s.dino.comments = Market.generateInitialComments(s.dino);
+                    state.inventory.incubated.push(s.dino);
+                    s.active = false;
+                    s.dino = null;
+                    Core.toast("Criatura enviada ao inventário do mercado!");
+                    Core.save();
+                    UI.renderSlots();
+                }
+            },
+            applyMutations(egg) {
+                let mCount = Math.random() < 0.2 ? 1 : Math.random() < 0.05 ? 2 : 0;
+                egg.muts = { bad: [], good: [], skin: null };
+                if(Math.random() < 0.02) egg.muts.skin = MUTATIONS.skins[Math.floor(Math.random()*MUTATIONS.skins.length)];
+                for(let i=0; i<mCount; i++) {
+                    if(Math.random() < 0.5) egg.muts.bad.push(MUTATIONS.bad[Math.floor(Math.random()*MUTATIONS.bad.length)]);
+                    else egg.muts.good.push(MUTATIONS.good[Math.floor(Math.random()*MUTATIONS.good.length)]);
+                }
+                let mult = 1.0;
+                mult -= (egg.muts.bad.length * 0.1);
+                mult += (egg.muts.good.length * 0.2);
+                if(egg.muts.skin) mult += 1.5;
+                egg.finalPrice = Math.floor(egg.basePrice * mult);
+            }
+        };
+
+        const Safari = {
+            init() {
+                if(Date.now() >= state.safariRefreshTime) this.generateItems();
+                safariInterval = setInterval(() => {
+                    if(state.paused) return;
+                    const r = state.safariRefreshTime - Date.now();
+                    if(r <= 0) this.generateItems();
+                    else document.getElementById('safari-timer').innerText = `Nova remessa em: ${Core.formatTime(r)}`;
+                }, 1000);
+            },
+            generateItems() {
+                state.safari = [];
+                let b = state.currentBiome;
+                let pool = DINO_DATA[b];
+                
+                let cheapPool = pool.filter(d => d.p <= 300000);
+                if(cheapPool.length > 0) {
+                    let cheapDino = cheapPool[Math.floor(Math.random()*cheapPool.length)];
+                    state.safari.push({ uid: Core.generateUID(), species: cheapDino.s, rarity: cheapDino.r, basePrice: cheapDino.p, hatchMs: cheapDino.t * 60000, emoji: '🥚', originBiome: b });
+                }
+
+                while(state.safari.length < 6) {
+                    let d = pool[Math.floor(Math.random()*pool.length)];
+                    state.safari.push({ uid: Core.generateUID(), species: d.s, rarity: d.r, basePrice: d.p, hatchMs: d.t * 60000, emoji: '🥚', originBiome: b });
+                }
+                state.safariRefreshTime = Date.now() + 7200000;
+                Core.save();
+                if(document.getElementById('safari-panel').classList.contains('active')) this.render();
+            },
+            render() {
+                const c = document.getElementById('safari-list');
+                c.innerHTML = '';
+                state.safari.forEach((e, idx) => {
+                    c.innerHTML += `
+                        <div class="list-item">
+                            <div class="list-item-row">
+                                <div class="dino-info">
+                                    <h4 class="rarity-${e.rarity}">${e.species} (Ovo)</h4>
+                                    <p>Raridade: ${e.rarity} | Tempo: ${e.hatchMs/60000}m</p>
+                                </div>
+                                <button class="btn" style="background:#ffaa00" onclick="Safari.buy(${idx})">Comprar<br>$${Core.formatMoney(e.basePrice)}</button>
+                            </div>
+                        </div>
+                    `;
+                });
+            },
+            buy(idx) {
+                AudioSystem.play('click');
+                const e = state.safari[idx];
+                if(state.money >= e.basePrice) {
+                    state.money -= e.basePrice;
+                    state.inventory.unincubated.push(e);
+                    state.safari.splice(idx, 1);
+                    Core.save();
+                    UI.updateMoney();
+                    this.render();
+                    Core.toast("Ovo comprado com sucesso!");
+                } else Core.toast("Sem dinheiro!");
+            }
+        };
+
+        const Market = {
+            generateInitialComments(dino) {
+                let comments = [];
+                let buyerName = BUYER_NAMES[Math.floor(Math.random() * BUYER_NAMES.length)];
+                let phrase = BUYER_PHRASES[Math.floor(Math.random() * BUYER_PHRASES.length)];
+                comments.push({
+                    author: buyerName + " (Negociador)",
+                    text: `Olá! Gostei do seu ${dino.species}. ${phrase.good} Porém, ${phrase.bad}`,
+                    isNegotiator: true
+                });
+
+                if(Math.random() > 0.5) {
+                    let extraName = BUYER_NAMES[Math.floor(Math.random() * BUYER_NAMES.length)];
+                    let extraPhrase = BUYER_PHRASES[Math.floor(Math.random() * BUYER_PHRASES.length)];
+                    comments.push({
+                        author: extraName,
+                        text: `${extraPhrase.good} ${extraPhrase.bad}`,
+                        isNegotiator: false
+                    });
+                }
+                return comments;
+            },
+            render() {
+                const c = document.getElementById('seller-list');
+                c.innerHTML = '';
+                if(state.inventory.incubated.length === 0) { c.innerHTML = '<p style="font-size:9px;text-align:center;">Nenhum dino ou fóssil no inventário.</p>'; return; }
+                
+                state.inventory.incubated.forEach((d, i) => {
+                    let isDead = d.status === 'dead';
+                    let priceFactor = isDead ? 0.2 : 1.0;
+                    let finalVal = Math.floor(d.finalPrice * priceFactor);
+
+                    let mutInfo = '';
+                    if(!isDead) {
+                        if(d.muts.good.length) mutInfo += `<span style="color:#0f0">[${d.muts.good.join(',')}] </span>`;
+                        if(d.muts.bad.length) mutInfo += `<span style="color:red">[${d.muts.bad.join(',')}] </span>`;
+                        if(d.muts.skin) mutInfo += `<span style="color:cyan">[Skin: ${d.muts.skin}] </span>`;
+                    } else {
+                        mutInfo = `<span style="color:red">[Fóssil - Valor Reduzido a 20%]</span>`;
+                    }
+
+                    let commentsHtml = '';
+                    if(d.comments) {
+                        d.comments.forEach(comm => {
+                            commentsHtml += `
+                                <div class="comment-box">
+                                    <div class="comment-author">${comm.author}</div>
+                                    <div>"${comm.text}"</div>
+                                    ${comm.isNegotiator && !isDead ? `<button class="btn" style="background:purple; margin-top:6px; font-size:6px; padding:6px;" onclick="Market.openNego(${i})">💬 Negociar com ${comm.author.split(' ')[0]}</button>` : ''}
+                                </div>
+                            `;
+                        });
+                    }
+                    
+                    c.innerHTML += `
+                        <div class="list-item">
+                            <div class="list-item-row">
+                                <div class="dino-info">
+                                    <h4 class="rarity-${d.rarity}">${d.name} (${d.species})</h4>
+                                    <p>Venda Direta: $${Core.formatMoney(finalVal)}</p>
+                                    <p>${mutInfo}</p>
+                                </div>
+                                <div>
+                                    <button class="btn" style="background:var(--theme-color)" onclick="Market.sellDirect(${i})">Vender Direto</button>
+                                </div>
+                            </div>
+                            <div style="width:100%; margin-top:4px;">
+                                ${commentsHtml}
+                            </div>
+                        </div>
+                    `;
+                });
+            },
+            sellDirect(idx) {
+                AudioSystem.play('click');
+                const d = state.inventory.incubated[idx];
+                let isDead = d.status === 'dead';
+                const val = Math.floor(d.finalPrice * (isDead ? 0.2 : 0.8));
+                state.money += val;
+                state.inventory.incubated.splice(idx, 1);
+                Core.toast(`Vendido por $${Core.formatMoney(val)}!`);
+                Core.save();
+                UI.updateMoney();
+                this.render();
+            },
+            openNego(idx) {
+                AudioSystem.play('click');
+                activeNego.dinoIndex = idx;
+                activeNego.msgsLeft = 5;
+                const d = state.inventory.incubated[idx];
+                activeNego.currentOffer = Math.floor(d.finalPrice * (0.8 + Math.random()*0.2));
+                
+                const sysBase = `Você é um comprador exigente no mercado de dinossauros. Você tem memória completa da conversa e do estado do jogo. O jogador quer te vender um ${d.species} chamado ${d.name}. Valor real: $${d.finalPrice}. Mutacoes: Bons:${d.muts.good.join(',')}, Maus:${d.muts.bad.join(',')}, Skin:${d.muts.skin||'Nenhuma'}. Sua oferta inicial é $${activeNego.currentOffer}. Você NÃO PODE aceitar pagar mais que $${Math.floor(d.finalPrice * 1.5)}. Fale em pt-br. Se fecharem acordo, diga EXATAMENTE e APENAS "FECHADO: [VALOR]". Se esgotar, diga "RECUSADO".`;
+                
+                activeNego.history = [
+                    { role: 'system', content: sysBase + ` Limite de mensagens restantes: ${activeNego.msgsLeft}.` }
+                ];
+                
+                document.getElementById('nego-chat').innerHTML = '';
+                AI.addChatMsg('nego-chat', `Comprador: Olá! Dou $${Core.formatMoney(activeNego.currentOffer)} no seu ${d.species}. O que acha?`, 'ia');
+                document.getElementById('nego-timer').innerText = `(5 msgs)`;
+                UI.closePanel('seller-panel');
+                UI.openPanel('nego-panel');
+            },
+            async sendNegoMessage() {
+                AudioSystem.play('click');
+                if(activeNego.msgsLeft <= 0) return;
+                const inp = document.getElementById('nego-input');
+                const text = inp.value.trim();
+                if(!text) return;
+                inp.value = '';
+                
+                activeNego.msgsLeft--;
+                document.getElementById('nego-timer').innerText = `(${activeNego.msgsLeft} msgs)`;
+                AI.addChatMsg('nego-chat', text, 'user');
+                AI.addChatMsg('nego-chat', "Pensando...", 'ia', 'temp-nego');
+                
+                activeNego.history[0].content = activeNego.history[0].content.replace(/Limite de mensagens restantes: \d+/, `Limite de mensagens restantes: ${activeNego.msgsLeft}`);
+                activeNego.history.push({ role: 'user', content: text });
+
+                const reply = await AI.fetch(activeNego.history);
+                activeNego.history.push({ role: 'assistant', content: reply });
+                
+                document.getElementById('temp-nego')?.remove();
+                AI.addChatMsg('nego-chat', reply, 'ia');
+                
+                if(reply.includes("FECHADO:")) {
+                    const match = reply.match(/FECHADO:\s*\$?(\d+)/);
+                    if(match) {
+                        const val = parseInt(match[1]);
+                        state.money += val;
+                        state.inventory.incubated.splice(activeNego.dinoIndex, 1);
+                        Core.save();
+                        UI.updateMoney();
+                        Core.toast(`Vendido por $${Core.formatMoney(val)}!`);
+                        setTimeout(() => UI.closePanel('nego-panel'), 2000);
+                    }
+                } else if(reply.includes("RECUSADO") || activeNego.msgsLeft === 0) {
+                    Core.toast("Negociação falhou!");
+                    setTimeout(() => UI.closePanel('nego-panel'), 2000);
+                }
+            }
+        };
+
+        const Shop = {
+            buy(id, price) {
+                AudioSystem.play('click');
+                if(state.money < price) { Core.toast("Sem dinheiro!"); return; }
+                state.money -= price;
+
+                if(id === 'safari_refresh') { state.safariRefreshTime = 0; Safari.generateItems(); Core.toast("Safari atualizado!"); }
+                else if(id === 'med_kit') { state.medKits += 5; Core.toast("Adicionado 5 Kits de Medicação!"); UI.updateMedKits(); }
+                else if(id === 'ts_1h') { this.applyTimeSkip(3600000); Core.toast("Avançou 1 hora!"); }
+                else if(id === 'ts_12h') { this.applyTimeSkip(43200000); Core.toast("Avançou 12 horas!"); }
+                else if(id === 'ts_24h') { this.applyTimeSkip(86400000); Core.toast("Avançou 24 horas (1 Dia)!"); }
+                else if(id === 'ts_72h') { this.applyTimeSkip(259200000); Core.toast("Avançou 72 horas (3 Dias) - Spinosaurus pronto!"); }
+
+                Core.save();
+                UI.updateMoney();
+                UI.renderSlots();
+            },
+            applyTimeSkip(ms) {
+                Object.keys(state.biomes).forEach(b => {
+                    state.biomes[b].slots.forEach(s => { 
+                        if(s.active && s.egg && s.egg.finishTime) s.egg.finishTime -= ms; 
+                    });
+                });
+            }
+        };
+
+        const Inventory = {
+            showTab(tab) {
+                const c = document.getElementById('inv-list');
+                c.innerHTML = '';
+                const arr = state.inventory[tab];
+                if(arr.length === 0) { c.innerHTML = '<p style="font-size:9px;text-align:center;">Vazio.</p>'; return; }
+                
+                arr.forEach((d, idx) => {
+                    if(tab === 'unincubated') {
+                        c.innerHTML += `
+                            <div class="list-item">
+                                <div class="list-item-row">
+                                    <div class="dino-info"><h4 class="rarity-${d.rarity}">${d.species} (Ovo)</h4><p>Bioma: ${d.originBiome.toUpperCase()}</p></div>
+                                    <button class="btn" style="background:#00ff00" onclick="Slots.selectEggToIncubate('${d.uid}')">Incubar</button>
+                                </div>
+                            </div>
+                        `;
+                    } else {
+                        let isDead = d.status === 'dead';
+                        c.innerHTML += `
+                            <div class="list-item">
+                                <div class="list-item-row">
+                                    <div class="dino-info"><h4 class="rarity-${d.rarity}">${d.name} (${d.species})</h4><p>${isDead ? 'Fóssil (Valor Reduzido)' : 'Criatura guardada'}</p></div>
+                                    <button class="btn" style="background:var(--theme-color)" onclick="Inventory.sendToSlot(${idx})">Mover para Slot</button>
+                                </div>
+                            </div>
+                        `;
+                    }
+                });
+            },
+            sendToSlot(idx) {
+                AudioSystem.play('click');
+                const slots = state.biomes[state.currentBiome].slots;
+                let emptyIdx = slots.findIndex(s => !s.active);
+                if(emptyIdx === -1) {
+                    Core.toast("Nenhum slot livre no bioma atual!");
+                    return;
+                }
+                const dino = state.inventory.incubated.splice(idx, 1)[0];
+                slots[emptyIdx].active = true;
+                slots[emptyIdx].egg = null;
+                slots[emptyIdx].dino = dino;
+                Core.toast("Criatura alocada no criatório!");
+                Core.save();
+                UI.renderSlots();
+                UI.closePanel('inventory-panel');
+            }
+        };
+
+        const UI = {
+            openPanel(id) {
+                AudioSystem.play('click');
+                document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+                document.getElementById(id).classList.add('active');
+                if(id === 'safari-panel') Safari.render();
+                if(id === 'seller-panel') Market.render();
+                if(id === 'contracts-panel') Contracts.render();
+                if(id === 'inventory-panel') Inventory.showTab('unincubated');
+                if(id === 'biome-panel') {
+                    document.getElementById('btn-marinho').innerText = state.biomes.marinho.unlocked ? 'Entrar' : '$150.000.000';
+                    document.getElementById('btn-voador').innerText = state.biomes.voador.unlocked ? 'Entrar' : '$400.000.000';
+                }
+            },
+            closePanel(id) { 
+                AudioSystem.play('click');
+                document.getElementById(id).classList.remove('active'); 
+            },
+            updateMoney() { 
+                document.getElementById('money').innerText = Core.formatMoney(state.money); 
+                Contracts.check('money', state.money);
+            },
+            updateMedKits() {
+                document.getElementById('med-kits-count').innerText = state.medKits;
+            },
+            updateAll() { 
+                this.updateMoney(); 
+                this.updateMedKits();
+                this.renderSlots(); 
+            },
+            renderSlots() {
+                const c = document.getElementById('slots-container');
+                c.innerHTML = '';
+                const slots = state.biomes[state.currentBiome].slots;
+                const now = Date.now();
+                slots.forEach((s, i) => {
+                    if(!s.active) {
+                        c.innerHTML += `<div class="slot" onclick="Slots.open(${i})"><div class="emoji">➕</div><div class="info">Vazio<br>Clique para incubar</div></div>`;
+                    } else if(s.egg && now < s.egg.finishTime) {
+                        c.innerHTML += `<div class="slot locked"><div class="emoji">🥚</div><div class="info">${s.egg.name}</div><div class="timer">${Core.formatTime(s.egg.finishTime - now)}</div></div>`;
+                    } else if(s.egg && now >= s.egg.finishTime) {
+                        c.innerHTML += `<div class="slot" style="border-color:#0f0;" onclick="Slots.collect(${i})"><div class="emoji">🐣</div><div class="info" style="color:#0f0;">Ovo Pronto!<br>Chocar agora</div></div>`;
+                    } else if(s.dino) {
+                        let d = s.dino;
+                        let hpPercent = Math.max(0, Math.min(100, (d.hp / d.maxHp) * 100));
+                        let hpColor = hpPercent > 50 ? '#0f0' : hpPercent > 20 ? '#ffaa00' : '#ff0000';
+                        let slotClass = d.status === 'sick' ? 'slot sick' : d.status === 'dead' ? 'slot dead' : 'slot';
+                        
+                        let actionHtml = '';
+                        if(d.status === 'sick') {
+                            actionHtml = `<button class="btn" style="background:#ffaa00; font-size:6px; padding:4px 6px; margin-top:2px;" onclick="Slots.treat(${i})">Tratar 💉</button>`;
+                        } else if(d.status === 'dead') {
+                            actionHtml = `<button class="btn" style="background:red; font-size:6px; padding:4px 6px; margin-top:2px;" onclick="Slots.sendToInventory(${i})">Guardar Fóssil</button>`;
+                        } else {
+                            actionHtml = `<button class="btn" style="background:#333; color:#aaa; font-size:6px; padding:4px 6px; margin-top:2px;" onclick="Slots.sendToInventory(${i})">Mover Inventário</button>`;
+                        }
+
+                        c.innerHTML += `
+                            <div class="${slotClass}">
+                                <div class="emoji">${d.status === 'dead' ? '🦴' : '🦖'}</div>
+                                <div class="info" style="font-size:7px; font-weight:bold; color:var(--theme-color);">${d.name}</div>
+                                <div class="hp-bar-container"><div class="hp-bar" style="width: ${hpPercent}%; background: ${hpColor};"></div></div>
+                                <div style="font-size:6px; color:${hpColor}">${d.status === 'sick' ? 'DOENTE ⚠️' : d.status === 'dead' ? 'FÓSSIL 💀' : `HP: ${d.hp}%`}</div>
+                                ${actionHtml}
+                            </div>
+                        `;
+                    }
+                });
+            }
+        };
+
+        Core.init();
+    </script>
+</body>
+</html>
