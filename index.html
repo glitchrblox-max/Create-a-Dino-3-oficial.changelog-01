@@ -483,14 +483,16 @@
                     let dino = { uid: Core.generateUID(), species: 'Stegosaurus', rarity: 'Incomum', basePrice: 1800000, hatchMs: 0, emoji: '🦖', age: 0, originBiome: 'terrestre', muts: { bad: [], good: [], skin: null }, hp: 100, maxHp: 100, status: 'healthy', comments: [] };
                     dino.muts.good.push(MUTATIONS.good[Math.floor(Math.random()*MUTATIONS.good.length)]);
                     dino.finalPrice = dino.basePrice * 1.5;
-                    dino.name = 'Stego Starter';
+                    dino.name = 'Resenhudinho';
                     state.inventory.incubated.push(dino);
                     return "Você ganhou $5.000 e um Stegosaurus!";
                 },
                 'GRANA': function() {
                     state.money += 50000;
                     return "Você ganhou $50.000!";
-                }
+                },
+                
+                //CODIGO AQUI
             },
             redeem() {
                 AudioSystem.play('click');
