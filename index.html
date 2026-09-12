@@ -493,6 +493,29 @@
                 },
                 
                 //CODIGO AQUI
+                'ALENDA': function() {
+    state.money += 100000; // Bônus opcional em dinheiro
+    let dino = { 
+        uid: Core.generateUID(), 
+        species: 'GIGANOTOSAURUS', // Nome da espécie (precisa estar no DINO_DATA)
+        rarity: 'Lendário', 
+        basePrice: 220000000, 
+        hatchMs: 0, // 0 para chocar na hora, ou coloque tempo em milissegundos
+        emoji: '🦖', 
+        age: 0, 
+        originBiome: 'terrestre', // 'terrestre', 'marinho' ou 'voador'
+        muts: { bad: [], good: ['Gigante'], skin: 'Dourado' }, // Mutações e Skins opcionais
+        hp: 100, 
+        maxHp: 100, 
+        status: 'healthy', 
+        comments: [] 
+    };
+    dino.finalPrice = dino.basePrice * 2.5;
+    dino.name = 'Ultra Giga'; // Nome personalizado do bicho
+    state.inventory.incubated.push(dino);
+    return "Parabéns! Você resgatou um Giganotosaurus Dourado!";
+},
+        
             },
             redeem() {
                 AudioSystem.play('click');
